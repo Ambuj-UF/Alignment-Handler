@@ -30,6 +30,7 @@ import subprocess
 try:
     from Bio import SeqIO
     from Bio.Seq import Seq
+    from Bio.SeqRecord import SeqRecord
     from Bio.Seq import _translate_str
     from Bio.Data import CodonTable
     from Bio.Alphabet import generic_dna
@@ -78,20 +79,20 @@ def spliter(str, num):
 
 def translator(recordData):
     proteinSeqList = list()
-    for i, rec in enumerate(recordsData):
+    recordsFunc = recordData
+    for i, rec in enumerate(recordsFunc):
         seqT = _translate_str(str(rec.seq), table)
         print seqT
-        recordData[i].seq = Seq(seqT, IUPAC.protein)
-
+        proteinSeqList.append(SeqRecord(Seq(seqT, IUPAC.protein), id=rec.id, name=rec.name, description=rec.description))
+    
     with open('translated.fas', 'w') as fp:
-        SeqIO.write(recordsData, fp, 'fasta')
+        SeqIO.write(proteinSeqList, fp, 'fasta')
 
 
 def frameCheck(records):
     for i, rec in enumerate(records):
         sequence = spliter(rec.seq, 3)
         for j, splits in enumerate(sequence):
-            print splits
             if splits.count('-') == 0:
                 break
             if splits.count('-') == 3:
@@ -102,19 +103,19 @@ def frameCheck(records):
         newSeq = Seq("", generic_dna)
         for seqData in sequence:
             newSeq = newSeq + seqData
-
+        
         records[i].seq = newSeq
-
+    
     return records
 
 
 def alignP():
     if args.pkg == 'muscle':
         if 'Darwin' in platform.system():
-            subprocess.call("./muscle/muscle -in translated.fas -out tAligned.fas", shell=True)
+            subprocess.call("./muscle/muscle -in translated.fas -refine -out tAligned.fas", shell=True)
         else:
-            subprocess.call("./muscle/muscleLinux -in translated.fas -out tAligned.fas", shell=True)
-
+            subprocess.call("./muscle/muscleLinux -in translated.fas -refine -out tAligned.fas", shell=True)
+    
     else:
         arguments = args.arg.replace('[', '').replace(']', '')
         subprocess.call("./mafft/mafft.bat %s translated.fas > tAligned.fas" %arguments, shell=True)
@@ -129,16 +130,17 @@ def cleanAli(recordNuc):
         nucData = [[x.id, x.seq] for x in recordNuc if x.id == rec.id][0]
         nucSeqData = spliter(nucData[1], 3)
         sequence = Seq("", generic_dna); pos = 0
+        print rec.seq
         for amino in rec.seq:
             if amino == '-':
                 sequence = sequence + Seq("---", generic_dna)
             else:
                 sequence = sequence + nucSeqData[pos]
                 pos = pos + 1
-
-        records[i].seq = Seq(sequence, generic_dna)
-
-    with open(args.o, 'rU') as fp:
+        
+        records[i].seq = Seq(str(sequence), generic_dna)
+    
+    with open(args.o, 'w') as fp:
         SeqIO.write(records, fp, args.otype)
 
 
@@ -148,17 +150,16 @@ def main():
         handle = open(args.i, 'rU')
     elif args.ali:
         handle = open(args.ali, 'rU')
-
+    
     records = list(SeqIO.parse(handle, args.itype))
     saveRec = records
-
+    
     if args.ali:
         records = frameCheck(records)
         for i, rec in enumerate(records):
             records[i].seq = rec.seq.ungap("-")
-
+    
     tSeq = translator(records)
-    print records[1].seq
     alignP()
     cleanAli(records)
 
