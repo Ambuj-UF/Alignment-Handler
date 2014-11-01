@@ -60,6 +60,8 @@ parser.add_argument('-o', type=str, required = True, help='Enter output alignmen
 parser.add_argument('-itype', type=str, required = True, choices=['fasta', 'nexus', 'phylip', 'phylip-interleived', 'phylip-relaxed'], help='Enter input alignment file format')
 parser.add_argument('-otype', type=str, required = True, choices=['fasta', 'nexus', 'phylip', 'phylip-interleived', 'phylip-relaxed'], help='Enter output alignment file format')
 
+parser.add_argument('-ign', action='store_true', default=False,
+                    help='Include if you want to ignore stop codons')
 
 parser.add_argument('-ctab', type=str, default = None, choices=['Ascidian Mitochondrial', 'SGC9', 'Coelenterate Mitochondrial', 'Protozoan Mitochondrial', 'Vertebrate Mitochondrial', 'Plant Plastid', 'Thraustochytrium Mitochondrial', 'Blepharisma Macronuclear', 'Mold Mitochondrial', 'Invertebrate Mitochondrial', 'Standard', 'Trematode Mitochondrial', 'Scenedesmus obliquus Mitochondrial', 'Euplotid Nuclear', 'Yeast Mitochondrial', 'Spiroplasma', 'Alternative Flatworm Mitochondrial', 'Ciliate Nuclear', 'SGC8', 'Alternative Yeast Nuclear', 'Hexamita Nuclear', 'SGC5', 'SGC4', 'SGC3', 'SGC2', 'SGC1', 'SGC0', 'Flatworm Mitochondrial', 'Dasycladacean Nuclear', 'Chlorophycean Mitochondrial', 'Mycoplasma', 'Bacterial', 'Echinoderm Mitochondrial'],  help='Select the codon table')
 
@@ -91,13 +93,29 @@ def groupy(L):
     yield first, last
 
 
+def checkStop(seqT):
+    newSeq = seqT[1:len(seqT)]
+    return(newSeq)
+
+
 def translator(recordData):
     proteinSeqList = list()
     recordsFunc = recordData
     for i, rec in enumerate(recordsFunc):
         seqT = _translate_str(str(rec.seq), table)
+        if args.ign == False:
+            if seqT.count("*") > 1:
+                print("Found stop codon while using 1st frame\n")
+                seqT = checkStop(seqT)
+            if seqT.count("*") > 1:
+                print("Found stop codon while using 2nd frame\n")
+                seqT = checkStop(seqT)
+            if seqT.count("*") > 1:
+                print("Found stop codon while using 3rd frame\n")
+                sys.exit("Stop codon found in %s" %rec.id)
+        
         proteinSeqList.append(SeqRecord(Seq(seqT, IUPAC.protein), id=rec.id, name=rec.name, description=rec.description))
-
+    
     with open('translated.fas', 'w') as fp:
         SeqIO.write(proteinSeqList, fp, 'fasta')
 
@@ -116,9 +134,9 @@ def frameCheck(records):
         newSeq = Seq("", generic_dna)
         for seqData in sequence:
             newSeq = newSeq + seqData
-
+        
         records[i].seq = newSeq
-
+    
     return records
 
 
@@ -163,7 +181,7 @@ def alignP():
             subprocess.call("./muscle/muscle -in translated.fas -out tAligned.fas", shell=True)
         else:
             subprocess.call("./muscle/muscleLinux -in translated.fas -out tAligned.fas", shell=True)
-
+    
     else:
         arguments = args.arg.replace('[', '').replace(']', '')
         subprocess.call("./mafft/mafft.bat %s translated.fas > tAligned.fas" %arguments, shell=True)
@@ -178,16 +196,15 @@ def cleanAli(recordNuc):
         nucData = [x.seq for x in recordNuc if x.id in rec.id or rec.id in x.id]
         nucSeqData = spliter(nucData[0], 3)
         sequence = Seq("", generic_dna); pos = 0
-        print rec.seq
-        for amino in rec.seq:
+        for j, amino in enumerate(rec.seq):
             if amino == '-':
                 sequence = sequence + Seq("---", generic_dna)
             else:
                 sequence = sequence + nucSeqData[pos]
                 pos = pos + 1
-
+        
         records[i].seq = Seq(str(sequence), generic_dna)
-
+    
     with open(args.o, 'w') as fp:
         SeqIO.write(records, fp, args.otype)
 
@@ -198,16 +215,16 @@ def main():
         handle = open(args.i, 'rU')
     elif args.ali:
         handle = open(args.ali, 'rU')
-
+    
     records = list(SeqIO.parse(handle, args.itype))
     saveRec = records
-
+    
     if args.ali:
         records = frameCheck(records)
         records = middleFrameCheck(records)
         for i, rec in enumerate(records):
             records[i].seq = rec.seq.ungap("-")
-
+    
     tSeq = translator(records)
     alignP()
     cleanAli(records)
