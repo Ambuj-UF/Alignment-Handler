@@ -94,7 +94,7 @@ def groupy(L):
 
 
 def checkStop(seqT):
-    newSeq = seqT[1:len(seqT)]
+    newSeq = seqT[1:len(seqT)] + Seq("N", generic_dna)
     return(newSeq)
 
 
@@ -102,7 +102,6 @@ def translator(recordData):
     proteinSeqList = list()
     recordsFunc = recordData
     for i, rec in enumerate(recordsFunc):
-        print len(rec.seq)
         seqT = _translate_str(str(rec.seq), table)
         if args.ign == False:
             if seqT.count("*") > 1:
