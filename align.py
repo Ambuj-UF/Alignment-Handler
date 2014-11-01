@@ -1,6 +1,5 @@
 ################################################################################################################
-# Alignment editing program. It removes indels and stop codons and provides an option to adjust the alignment  #
-# according to user defined protein or species sequence                                                        #
+# Codon Alignment program.                                                                                     #
 #                                                                                                              #
 # Copyright (C) {2014}  {Ambuj Kumar, Kimball-Brain lab group, Biology Department, University of Florida}      #
 #                                                                                                              #
