@@ -122,59 +122,6 @@ def translator(recordData):
         SeqIO.write(proteinSeqList, fp, 'fasta')
 
 
-def frameCheck(records):
-    for i, rec in enumerate(records):
-        sequence = spliter(rec.seq, 3)
-        for j, splits in enumerate(sequence):
-            if splits.count('-') == 0:
-                break
-            if splits.count('-') == 3:
-                continue
-            else:
-                sequence[j] = Seq("---", generic_dna)
-                break
-        newSeq = Seq("", generic_dna)
-        for seqData in sequence:
-            newSeq = newSeq + seqData
-        
-        records[i].seq = newSeq
-    
-    return records
-
-
-def middleFrameCheck(records):
-    newRecord = list()
-    for i, rec in enumerate(records):
-        storePos = list()
-        for j, nuc in enumerate(rec.seq):
-            if nuc == '-' or nuc == 'N':
-                storePos.append(j)
-        
-        if storePos == []:
-            continue
-        
-        newseq = rec.seq.tomutable()
-        groups = [x for x in groupy(storePos)]
-        
-        for data in groups:
-            pos1 = data[0]%3
-            pos2 = data[1]%3
-            if pos1 == 1:
-                print newseq[data[0]-1], newseq[data[0]], newseq[data[0]+1]
-                newseq[data[0]-1] = "-"
-            elif pos1 == 2:
-                print newseq[data[0]-2], newseq[data[0]-1], newseq[data[0]]
-                newseq[data[0]] = "N"
-            if pos2 == 1:
-                print newseq[data[1]-1], newseq[data[1]], newseq[data[1]+1]
-                newseq[data[1]+1] = "-"
-            elif pos2 == 0:
-                print newseq[data[1]-2], newseq[data[1]-1], newseq[data[1]]
-                newseq[data[1]] = "N"
-        records[i].seq = newseq.toseq()
-    
-    return records
-
 
 
 def alignP():
@@ -222,8 +169,6 @@ def main():
     saveRec = records
     
     if args.ali:
-        records = frameCheck(records)
-        records = middleFrameCheck(records)
         for i, rec in enumerate(records):
             records[i].seq = rec.seq.ungap("-")
     
