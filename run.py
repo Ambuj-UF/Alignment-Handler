@@ -102,14 +102,17 @@ def translator(recordData):
     proteinSeqList = list()
     recordsFunc = recordData
     for i, rec in enumerate(recordsFunc):
+        print len(rec.seq)
         seqT = _translate_str(str(rec.seq), table)
         if args.ign == False:
             if seqT.count("*") > 1:
                 print("Found stop codon while using 1st frame\n")
-                seqT = checkStop(seqT)
+                rec.seq = checkStop(rec.seq)
+                seqT = _translate_str(str(rec.seq), table)
             if seqT.count("*") > 1:
                 print("Found stop codon while using 2nd frame\n")
-                seqT = checkStop(seqT)
+                rec.seq = checkStop(rec.seq)
+                seqT = _translate_str(str(rec.seq), table)
             if seqT.count("*") > 1:
                 print("Found stop codon while using 3rd frame\n")
                 sys.exit("Stop codon found in %s" %rec.id)
