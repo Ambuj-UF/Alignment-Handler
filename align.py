@@ -62,6 +62,9 @@ parser.add_argument('-otype', type=str, required = True, choices=['fasta', 'nexu
 parser.add_argument('-ign', action='store_true', default=False,
                     help='Include if you want to ignore stop codons')
 
+parser.add_argument('-omit', action='store_true', default=False,
+                    help='This function omits the low quality CDS sequences')
+
 parser.add_argument('-ctab', type=str, default = None, choices=['Ascidian Mitochondrial', 'SGC9', 'Coelenterate Mitochondrial', 'Protozoan Mitochondrial', 'Vertebrate Mitochondrial', 'Plant Plastid', 'Thraustochytrium Mitochondrial', 'Blepharisma Macronuclear', 'Mold Mitochondrial', 'Invertebrate Mitochondrial', 'Standard', 'Trematode Mitochondrial', 'Scenedesmus obliquus Mitochondrial', 'Euplotid Nuclear', 'Yeast Mitochondrial', 'Spiroplasma', 'Alternative Flatworm Mitochondrial', 'Ciliate Nuclear', 'SGC8', 'Alternative Yeast Nuclear', 'Hexamita Nuclear', 'SGC5', 'SGC4', 'SGC3', 'SGC2', 'SGC1', 'SGC0', 'Flatworm Mitochondrial', 'Dasycladacean Nuclear', 'Chlorophycean Mitochondrial', 'Mycoplasma', 'Bacterial', 'Echinoderm Mitochondrial'],  help='Select the codon table')
 
 
@@ -113,7 +116,10 @@ def translator(recordData):
                 seqT = _translate_str(str(rec.seq), table)
             if seqT.count("*") > 1:
                 print("Found stop codon while using 3rd frame\n")
-                sys.exit("Stop codon found in %s" %rec.id)
+                if args.omit == False:
+                    sys.exit("Stop codon found in %s" %rec.id)
+                else:
+                    continue
         
         proteinSeqList.append(SeqRecord(Seq(seqT, IUPAC.protein), id=rec.id, name=rec.name, description=rec.description))
     
