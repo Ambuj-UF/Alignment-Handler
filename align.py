@@ -127,14 +127,11 @@ def translator(recordData):
                                 recordsFunc[i].seq = recordsFunc[i].seq[2:len(rec.seq)] + Seq("NN", generic_dna)
                     
                     else:
-                        if args.omit == False:
-                            print rec.id
-                            seqT = _translate_str(str(rec.seq[2:len(rec.seq)] + Seq("NN", generic_dna)), table)
-                            recordsFunc[i].seq = recordsFunc[i].seq[2:len(rec.seq)] + Seq("NN", generic_dna)
+                        seqT = _translate_str(str(rec.seq[2:len(rec.seq)] + Seq("NN", generic_dna)), table)
+                        recordsFunc[i].seq = recordsFunc[i].seq[2:len(rec.seq)] + Seq("NN", generic_dna)
                 else:
-                    if args.omit == False:
-                        seqT = _translate_str(str(rec.seq[1:len(rec.seq)] + Seq("N", generic_dna)), table)
-                        recordsFunc[i].seq = recordsFunc[i].seq[1:len(rec.seq)] + Seq("N", generic_dna)
+                    seqT = _translate_str(str(rec.seq[1:len(rec.seq)] + Seq("N", generic_dna)), table)
+                    recordsFunc[i].seq = recordsFunc[i].seq[1:len(rec.seq)] + Seq("N", generic_dna)
             
             else:
                 pass
@@ -188,8 +185,12 @@ def cleanAli(recordNuc):
         
         records[i].seq = Seq(str(sequence), generic_dna)
     
-    with open(args.o, 'w') as fp:
-        SeqIO.write(records, fp, args.otype)
+    if args.omit == False:
+        with open(args.o, 'w') as fp:
+            SeqIO.write(records, fp, args.otype)
+    else:
+        with open(args.o.split('.')[0] + '_omited.' + args.o.split('.')[1], 'w') as fp:
+            SeqIO.write(records, fp, args.otype)
 
 
 def main():
@@ -198,12 +199,25 @@ def main():
     elif args.ali:
         handle = open(args.ali, 'rU')
     
+    
     records = list(SeqIO.parse(handle, args.itype))
     for j, rec in enumerate(records):
         if 'TAA' in rec.seq[-3:] or 'TGA' in rec.seq[-3:] or 'TAG' in rec.seq[-3:]:
             records[j].seq = rec.seq[0:-3]
     
-    saveRec = records
+    
+    if args.omit == True:
+        badQuality = list()
+        fdata = open(args.i.split('.')[0] + '.log', 'r').readlines()
+        for lines in fdata:
+            badQuality.append(lines.split(' ')[0])
+        
+        newRecords = list()
+        for rec in records:
+            if rec.id.split('|')[1] not in badQuality:
+                newRecords.append(rec)
+        
+        records = newRecords
     
     if args.ali:
         for i, rec in enumerate(records):
