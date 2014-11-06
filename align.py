@@ -1,5 +1,6 @@
 ################################################################################################################
-# Codon Alignment program.                                                                                     #
+# Alignment editing program. It removes indels and stop codons and provides an option to adjust the alignment  #
+# according to user defined protein or species sequence                                                        #
 #                                                                                                              #
 # Copyright (C) {2014}  {Ambuj Kumar, Kimball-Brain lab group, Biology Department, University of Florida}      #
 #                                                                                                              #
@@ -95,36 +96,50 @@ def groupy(L):
     yield first, last
 
 
-def checkStop(seqT):
-    newSeq = seqT[1:len(seqT)] + Seq("N", generic_dna)
-    return(newSeq)
-
-
 def translator(recordData):
     proteinSeqList = list()
     recordsFunc = recordData
+    
     for i, rec in enumerate(recordsFunc):
+        counter = dict()
         seqT = _translate_str(str(rec.seq), table)
+        for j, obj in enumerate(seqT):
+            if '*' in obj:
+                seqT = seqT[:j] + 'Z' + seqT[j+1:]
+        
         if args.ign == False:
-            if seqT.count("*") > 1:
+            if "*" in seqT:
+                counter['one'] = seqT.count('*')
                 print("Found stop codon while using 1st frame\n")
-                rec.seq = checkStop(rec.seq)
-                seqT = _translate_str(str(rec.seq), table)
-            if seqT.count("*") > 1:
+                seqT = _translate_str(str(rec.seq[1:len(rec.seq)] + Seq("N", generic_dna)), table)
+            if "*" in seqT:
+                counter['two'] = seqT.count('*')
                 print("Found stop codon while using 2nd frame\n")
-                rec.seq = checkStop(rec.seq)
-                seqT = _translate_str(str(rec.seq), table)
-            if seqT.count("*") > 1:
+                seqT = _translate_str(str(rec.seq[2:len(rec.seq)] + Seq("NN", generic_dna)), table)
+            if "*" in seqT:
+                counter['three'] = seqT.count('*')
                 print("Found stop codon while using 3rd frame\n")
                 if args.omit == False:
-                    sys.exit("Stop codon found in %s" %rec.id)
+                    if min(counter, key=counter.get) == 'one':
+                        seqT = _translate_str(str(rec.seq), table)
+                    elif min(counter, key=counter.get) == 'two':
+                        seqT = _translate_str(str(rec.seq[1:len(rec.seq)] + Seq("N", generic_dna)), table)
+                        recordsFunc[i].seq = recordsFunc[i].seq[1:len(rec.seq)] + Seq("N", generic_dna)
+                    elif min(counter, key=counter.get) == 'three':
+                        seqT = _translate_str(str(rec.seq[2:len(rec.seq)] + Seq("NN", generic_dna)), table)
+                        recordsFunc[i].seq = recordsFunc[i].seq[2:len(rec.seq)] + Seq("NN", generic_dna)
+                
                 else:
                     continue
         
         proteinSeqList.append(SeqRecord(Seq(seqT, IUPAC.protein), id=rec.id, name=rec.name, description=rec.description))
     
+    
     with open('translated.fas', 'w') as fp:
         SeqIO.write(proteinSeqList, fp, 'fasta')
+    
+    
+    return recordsFunc
 
 
 
@@ -144,24 +159,26 @@ def alignP():
 def cleanAli(recordNuc):
     handleP = open('tAligned.fas', 'rU')
     records = list(SeqIO.parse(handleP, 'fasta'))
-    newRecord = list()
     
     for i, rec in enumerate(records):
-        nucData = [x.seq for x in recordNuc if x.id in rec.id or rec.id in x.id]
+        nucData = [x.seq for x in recordNuc if x.id in rec.id]
         nucSeqData = spliter(nucData[0], 3)
         sequence = Seq("", generic_dna); pos = 0
         for j, amino in enumerate(rec.seq):
             if amino == '-':
                 sequence = sequence + Seq("---", generic_dna)
+            elif amino == 'Z':
+                sequence = sequence + Seq("NNN", generic_dna)
+                pos = pos + 1
             else:
                 sequence = sequence + nucSeqData[pos]
                 pos = pos + 1
+        
         
         records[i].seq = Seq(str(sequence), generic_dna)
     
     with open(args.o, 'w') as fp:
         SeqIO.write(records, fp, args.otype)
-
 
 
 def main():
@@ -171,13 +188,17 @@ def main():
         handle = open(args.ali, 'rU')
     
     records = list(SeqIO.parse(handle, args.itype))
+    for j, rec in enumerate(records):
+        if 'TAA' in rec.seq[-3:] or 'TGA' in rec.seq[-3:] or 'TAG' in rec.seq[-3:]:
+            records[j].seq = rec.seq[0:-3]
+    
     saveRec = records
     
     if args.ali:
         for i, rec in enumerate(records):
             records[i].seq = rec.seq.ungap("-")
     
-    tSeq = translator(records)
+    records = translator(records)
     alignP()
     cleanAli(records)
 
