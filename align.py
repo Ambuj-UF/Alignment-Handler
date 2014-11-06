@@ -103,34 +103,45 @@ def translator(recordData):
     for i, rec in enumerate(recordsFunc):
         counter = dict()
         seqT = _translate_str(str(rec.seq), table)
-        for j, obj in enumerate(seqT):
-            if '*' in obj:
-                seqT = seqT[:j] + 'Z' + seqT[j+1:]
         
         if args.ign == False:
             if "*" in seqT:
                 counter['one'] = seqT.count('*')
                 print("Found stop codon while using 1st frame\n")
                 seqT = _translate_str(str(rec.seq[1:len(rec.seq)] + Seq("N", generic_dna)), table)
-            if "*" in seqT:
-                counter['two'] = seqT.count('*')
-                print("Found stop codon while using 2nd frame\n")
-                seqT = _translate_str(str(rec.seq[2:len(rec.seq)] + Seq("NN", generic_dna)), table)
-            if "*" in seqT:
-                counter['three'] = seqT.count('*')
-                print("Found stop codon while using 3rd frame\n")
-                if args.omit == False:
-                    if min(counter, key=counter.get) == 'one':
-                        seqT = _translate_str(str(rec.seq), table)
-                    elif min(counter, key=counter.get) == 'two':
+                if "*" in seqT:
+                    counter['two'] = seqT.count('*')
+                    print("Found stop codon while using 2nd frame\n")
+                    seqT = _translate_str(str(rec.seq[2:len(rec.seq)] + Seq("NN", generic_dna)), table)
+                    if "*" in seqT:
+                        counter['three'] = seqT.count('*')
+                        print("Found stop codon while using 3rd frame\n")
+                        if args.omit == False:
+                            if min(counter, key=counter.get) == 'one':
+                                seqT = _translate_str(str(rec.seq), table)
+                            elif min(counter, key=counter.get) == 'two':
+                                seqT = _translate_str(str(rec.seq[1:len(rec.seq)] + Seq("N", generic_dna)), table)
+                                recordsFunc[i].seq = recordsFunc[i].seq[1:len(rec.seq)] + Seq("N", generic_dna)
+                            elif min(counter, key=counter.get) == 'three':
+                                seqT = _translate_str(str(rec.seq[2:len(rec.seq)] + Seq("NN", generic_dna)), table)
+                                recordsFunc[i].seq = recordsFunc[i].seq[2:len(rec.seq)] + Seq("NN", generic_dna)
+                    
+                    else:
+                        if args.omit == False:
+                            print rec.id
+                            seqT = _translate_str(str(rec.seq[2:len(rec.seq)] + Seq("NN", generic_dna)), table)
+                            recordsFunc[i].seq = recordsFunc[i].seq[2:len(rec.seq)] + Seq("NN", generic_dna)
+                else:
+                    if args.omit == False:
                         seqT = _translate_str(str(rec.seq[1:len(rec.seq)] + Seq("N", generic_dna)), table)
                         recordsFunc[i].seq = recordsFunc[i].seq[1:len(rec.seq)] + Seq("N", generic_dna)
-                    elif min(counter, key=counter.get) == 'three':
-                        seqT = _translate_str(str(rec.seq[2:len(rec.seq)] + Seq("NN", generic_dna)), table)
-                        recordsFunc[i].seq = recordsFunc[i].seq[2:len(rec.seq)] + Seq("NN", generic_dna)
-                
-                else:
-                    continue
+            
+            else:
+                pass
+        
+        for j, obj in enumerate(seqT):
+            if '*' in obj:
+                seqT = seqT[:j] + 'Z' + seqT[j+1:]
         
         proteinSeqList.append(SeqRecord(Seq(seqT, IUPAC.protein), id=rec.id, name=rec.name, description=rec.description))
     
